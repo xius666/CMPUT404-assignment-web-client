@@ -63,13 +63,13 @@ class HTTPClient(object):
         return None
 
     def get_code(self, data):
-        return None
+        return int(data.split("\r\n")[0].split(" ")[1])
 
     def get_headers(self,data):
         return None
 
     def get_body(self, data):
-        return None
+        return data.split("\r\n")[-1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -93,19 +93,20 @@ class HTTPClient(object):
         code = 500
         body = ""
         host_name, port, path = self.url_parser(url)
-        req = f"GET {path} HTTP/1.1\r\nHost: {host_name}\r\naccept-charset:utf-8\r\nConnection: close\r\n\r\n"
+        req = f"GET {path} HTTP/1.1\r\nHost: {host_name}\r\naccept-charset:utf-8\r\nAccept: */*\r\nConnection: close\r\n\r\n"
         #request if failed return code and body directly
         try:
             self.connect(host_name,port)
             self.sendall(req) #send request
         except:
+            #server error
             print(code+"/n"+body)
             return HTTPResponse(code, body)
         recv = self.recvall(self.socket)
         self.close()
         #read the body and code from the sockets
-        body = recv.split("\r\n")[-1]
-        code = int(recv.split("\r\n")[0].split(" ")[1])
+        body = self.get_body(recv)
+        code = self.get_code(recv)
         print(body+"/n"+body)
 
         return HTTPResponse(code, body)
@@ -118,18 +119,20 @@ class HTTPClient(object):
             args=""
         else:
             args = urllib.parse.urlencode(args)
-        req = f"POST {path} HTTP/1.1\r\nHost: {host_name}\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length:{len(args.encode('utf-8'))}\r\naccept-charset:utf-8\r\nConnection: close\r\n\r\n{args}"
+        req = f"POST {path} HTTP/1.1\r\nHost: {host_name}\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {str(len(args))}\r\nAccept: */*\r\naccept-charset:utf-8\r\nConnection: close\r\n\r\n{args}"
         try:
             self.connect(host_name,port)
             self.sendall(req) #send request
         except:
+            #server error
+
             print(code+"/n"+body)
             return HTTPResponse(code, body)
         recv = self.recvall(self.socket)
         self.close()
         #read the body and code from the sockets
-        body = recv.split("\r\n")[-1]
-        code = int(recv.split("\r\n")[0].split(" ")[1])
+        body = self.get_body(recv)
+        code = self.get_code(recv)
         print(body+"/n"+body)
 
         return HTTPResponse(code, body)
